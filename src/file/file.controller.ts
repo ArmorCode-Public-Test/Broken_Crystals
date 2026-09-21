@@ -8,9 +8,11 @@ import {
   Logger,
   Put,
   Query,
-  Res
+  Res,
+  UseGuards
 } from '@nestjs/common';
 import {
+  ApiForbiddenResponse,
   ApiHeader,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
@@ -19,12 +21,10 @@ import {
   ApiQuery,
   ApiTags
 } from '@nestjs/swagger';
-import { W_OK } from 'constants';
-import * as fs from 'fs';
-import * as path from 'path';
 import { Stream } from 'stream';
 import { FileService } from './file.service';
 import { FastifyReply } from 'fastify';
+import { AuthGuard } from '../auth/auth.guard';
 import {
   SWAGGER_DESC_DELETE_FILE,
   SWAGGER_DESC_READ_FILE,
@@ -271,28 +271,34 @@ export class FileController {
   }
 
   @Put('raw')
+  @UseGuards(AuthGuard)
   @ApiQuery({
     name: 'path',
-    example: 'some/path/to/file.png',
+    example: 'file.png',
     required: true
   })
   @ApiOperation({
     description: SWAGGER_DESC_SAVE_RAW_CONTENT
+  })
+  @ApiForbiddenResponse({
+    description: 'Returned when the user is not authenticated'
   })
   @ApiOkResponse()
   async uploadFile(
     @Query('path') file: string,
     @Body() raw: string
   ): Promise<string> {
+    if (typeof raw !== 'string' && !Buffer.isBuffer(raw)) {
+      throw new BadRequestException('Invalid file content');
+    }
+
     try {
-      if (typeof raw === 'string' || Buffer.isBuffer(raw)) {
-        await fs.promises.access(path.dirname(file), W_OK);
-        await fs.promises.writeFile(file, raw);
-        return `File uploaded successfully at ${file}`;
-      }
+      const location = await this.fileService.saveFile(file, raw);
+
+      return `File uploaded successfully at ${location}`;
     } catch (err) {
       this.logger.error(err.message);
-      throw err.message;
+      throw err;
     }
   }
 
