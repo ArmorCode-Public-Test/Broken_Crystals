@@ -1,0 +1,48 @@
+name: Vision Vdoo Repo Analysis
+
+on: [push]
+
+jobs:
+  # Job 1: Checkout the repo and ZIP it
+  package-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Wrap Repository in a Zip
+        run: |
+          # Zipping the entire repo provides the 'Filesystem' Vision Vdoo needs
+          zip -r open-assistant-source.zip . -x "*.git*"
+      - name: Upload Zip for Scan
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo_to_scan
+          path: open-assistant-source.zip
+
+  # Job 2: Run the scan inside the Vdoo container
+  vision-scan:
+    needs: package-repo
+    runs-on: ubuntu-latest
+    container:
+      image: releases-docker.jfrog.io/vision_analysis:5.29.1
+
+    steps:
+      - name: Download Zip from previous job
+        uses: actions/download-artifact@v4
+        with:
+          name: repo_to_scan
+
+      - name: Run Vision Analysis
+        shell: bash
+        run: |
+          # We scan the source zip to identify vulnerabilities in dependencies and code
+          vdoo_analysis analyze \
+            --token ${{ secrets.VISION_TOKEN }} \
+            --base_url ${{ vars.VISION_BASE_URL }} \
+            --artifact-id ${{ vars.VISION_ARTIFACT_ID }} \
+            --image-path open-assistant-source.zip \
+            -n "Open-Assistant-Scan-${{ github.run_id }}" \
+            --verbose \
+            --output-uuid scan_uuid.txt
+          echo "Success! The scan has started. Check your Vision Vdoo dashboard."
