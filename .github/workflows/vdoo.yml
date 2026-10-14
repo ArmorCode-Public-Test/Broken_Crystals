@@ -13,12 +13,12 @@ jobs:
       - name: Wrap Repository in a Zip
         run: |
           # Zipping the entire repo provides the 'Filesystem' Vision Vdoo needs
-          zip -r open-assistant-source.zip . -x "*.git*"
+          zip -r broken-crystals.zip . -x "*.git*"
       - name: Upload Zip for Scan
         uses: actions/upload-artifact@v4
         with:
           name: repo_to_scan
-          path: open-assistant-source.zip
+          path: broken-crystals.zip
 
   # Job 2: Run the scan inside the Vdoo container
   vision-scan:
