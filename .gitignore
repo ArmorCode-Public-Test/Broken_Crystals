@@ -34,3 +34,6 @@ lerna-debug.log*
 .vscode/*
 
 keycloak/db
+
+# Uploaded files
+/uploads

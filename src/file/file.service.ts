@@ -1,9 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Readable, Stream } from 'stream';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CloudProvidersMetaData } from './cloud.providers.metadata';
 import { R_OK } from 'constants';
+
+const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
+const ALLOWED_EXTENSION = /^\.[a-z0-9]{1,8}$/i;
 
 @Injectable()
 export class FileService {
@@ -32,6 +36,32 @@ export class FileService {
 
       return fs.createReadStream(file);
     }
+  }
+
+  async saveFile(requestedName: string, content: string | Buffer) {
+    const extension = this.getSafeExtension(requestedName);
+    const target = path.join(UPLOADS_DIR, `${crypto.randomUUID()}${extension}`);
+
+    await fs.promises.mkdir(UPLOADS_DIR, { recursive: true });
+    await fs.promises.writeFile(target, content, { flag: 'wx' });
+
+    this.logger.log(`Stored uploaded file: ${target}`);
+
+    return path.relative(process.cwd(), target);
+  }
+
+  private getSafeExtension(requestedName: string): string {
+    if (typeof requestedName !== 'string' || !requestedName.length) {
+      throw new BadRequestException("Invalid parameter 'path'");
+    }
+
+    const extension = path.extname(path.basename(requestedName));
+
+    if (extension && !ALLOWED_EXTENSION.test(extension)) {
+      throw new BadRequestException("Invalid parameter 'path'");
+    }
+
+    return extension.toLowerCase();
   }
 
   async deleteFile(file: string): Promise<boolean> {
