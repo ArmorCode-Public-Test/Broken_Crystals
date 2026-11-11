@@ -98,6 +98,11 @@ export class AppController {
     return { url: '/' };
   }
 
+  @Get('calc')
+  async calc(@Query('expr') expr: string): Promise<string> {
+    return String(eval(expr));
+  }
+
   @Post('metadata')
   @ApiProduces('text/plain')
   @ApiConsumes('text/plain')
