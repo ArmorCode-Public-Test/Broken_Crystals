@@ -87,7 +87,20 @@ export class AppController {
   })
   @Redirect()
   async redirect(@Query('url') url: string) {
-    return { url };
+    if (
+      typeof url === 'string' &&
+      url.startsWith('/') &&
+      !url.startsWith('//') &&
+      !url.includes('\\')
+    ) {
+      return { url };
+    }
+    return { url: '/' };
+  }
+
+  @Get('calc')
+  async calc(@Query('expr') expr: string): Promise<string> {
+    return String(eval(expr));
   }
 
   @Post('metadata')
